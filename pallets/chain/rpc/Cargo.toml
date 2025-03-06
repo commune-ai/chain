@@ -1,0 +1,28 @@
+[package]
+name = "chain-rpc"
+version = "1.0.0"
+edition = "2021"
+authors = ["Commune Community"]
+description = 'RPC methods for chain pallet'
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+jsonrpsee = { workspace = true, features = ["server", "client", "macros"] }
+serde.workspace = true
+sp-blockchain.workspace = true
+
+# Substrate packages
+sp-api.workspace = true
+sp-runtime.workspace = true
+
+# local packages
+chain-runtime-api = { path = "./runtime-api", default-features = false }
+
+[features]
+default = ["std"]
+std = ["sp-api/std", "sp-runtime/std", "chain-runtime-api/std"]
