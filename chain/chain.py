@@ -752,7 +752,7 @@ class Chain(c.Module):
         self,
         name: str,
         params: list[Any] = [],
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
     ) -> Any:
         """
         Queries a storage function on the network.
@@ -781,7 +781,7 @@ class Chain(c.Module):
         self,
         name: str='Emission',
         params: list[Any] = [],
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         extract_value: bool = True,
         max_age=60,
         update=False,
@@ -868,9 +868,9 @@ class Chain(c.Module):
         fn: str,
         params: dict[str, Any],
         key: Keypair,
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         wait_for_inclusion: bool = True,
-        wait_for_finalization: bool = True,
+        wait_for_finalization: bool = False,
         sudo: bool = False,
         tip = 0,
         nonce=None,
@@ -963,7 +963,7 @@ class Chain(c.Module):
         key: Keypair,
         signatories: list[Ss58Address],
         threshold: int,
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         wait_for_inclusion: bool = True,
         wait_for_finalization: bool = None,
         sudo: bool = False,
@@ -1125,7 +1125,7 @@ class Chain(c.Module):
             "amounts": amounts,
         }
 
-        return self.compose_call(module="ChainModule", fn="transfer_multiple", params=params, key=key )
+        return self.compose_call(module="SubspaceModule", fn="transfer_multiple", params=params, key=key )
     
     def get_stake(self, key=None):
         return sum(list(self.get_stake_from(key).values()))
@@ -1215,11 +1215,11 @@ class Chain(c.Module):
         self,
         key: str,
         name: str=None,
-        address: str = None ,
+        url: str = None,
         metadata: str = None,
         delegation_fee: int = None,
         validator_weight_fee = None,
-        subnet = 0,
+        subnet = 2,
         public = False,
 
     ) -> ExtrinsicReceipt:
@@ -1227,14 +1227,15 @@ class Chain(c.Module):
         name = name or key
         key = self.resolve_key(key)
         subnet = self.resolve_subnet(subnet)
-        address = c.namespace().get(name, '0.0.0.0:8888')
-        address = url if public else ('0.0.0.0:' + url.split(':')[-1])
-        module = self.get_module(key.ss58_url, subnet=subnet)
-        validator_weight_fee = validator_weight_fee or module.get('validator_weight_fee', 0)
-        delegation_fee = delegation_fee or module.get('stake_delegation_fee', 0)
+        if url == None:
+            url = c.namespace().get(name, '0.0.0.0:8888')
+        url = url if public else ('0.0.0.0:' + url.split(':')[-1])
+        module = self.module(key.ss58_address, subnet=subnet)
+        validator_weight_fee = validator_weight_fee or module.get('validator_weight_fee', 10)
+        delegation_fee = delegation_fee or module.get('stake_delegation_fee', 10)
         params = {
             "name": name,
-            "url": url,
+            "address": url,
             "stake_delegation_fee": delegation_fee,
             "metadata": metadata,
             'validator_weight_fee': validator_weight_fee,
@@ -1243,15 +1244,19 @@ class Chain(c.Module):
         return self.compose_call("update_module", params=params, key=key) 
     
 
+
+    def reg(self, name='compare', metadata=None, url='0.0.0.0:8888', module_key=None, key=None, subnet=2):
+        return self.register(name=name, metadata=metadata, url=url, module_key=module_key, key=key, subnet=subnet)
+
     def register(
         self,
         name: str,
         url: str = '0.0.0.0:8000',
-        module_key = None, 
+        module_key : str = None , 
         key: Keypair = None,
         metadata: str = 'NA',
-        subnet: str = 'General',
-        wait_for_finalization = True,
+        subnet: str = 2,
+        wait_for_finalization = False,
         public = False,
     ) -> ExtrinsicReceipt:
         """
@@ -1265,23 +1270,22 @@ class Chain(c.Module):
             subnet: The network subnet to register the module in.
                 If None, a default value is used.
         """
+        module_key = c.get_key(module_key or name).ss58_address
         key =  c.get_key(key)
         if url == None:
             namespace = c.namespace()
             url = namespace.get(name, url)
-            if public:
-                ip = c.ip()
-            else:
-                url = '0.0.0.0' +':'+ url.split(':')[-1]
+            ip = (c.ip() if public else '0.0.0.0')
+            port = url.split(':')[-1]
+            url = ip +':'+ port
         params = {
             "network_name": self.resolve_subnet_name(subnet),
             "address":  url,
             "name": name,
-            "module_key":c.get_key(module_key or name, creaet_if_not_exists=True).ss58_address,
+            "module_key": module_key,
             "metadata": metadata,
         }
-        response =  self.compose_call("register", params=params, key=key, wait_for_finalization=wait_for_finalization)
-        return response
+        return  self.compose_call("register", params=params, key=key, wait_for_finalization=wait_for_finalization)
 
     def dereg(self, key: Keypair, subnet: int=0):
         return self.deregister(key=key, subnet=subnet)
@@ -1313,9 +1317,6 @@ class Chain(c.Module):
         response = self.compose_call("deregister", params=params, key=key)
 
         return response
-
-    def reg(self, key: Keypair, subnet: int=0):
-        return self.register(key=key, subnet=subnet)
     
     def register_subnet(self, name: str, metadata: str = None,  key: Keypair=None) -> ExtrinsicReceipt:
         """
@@ -1427,12 +1428,9 @@ class Chain(c.Module):
         params["metadata"] = params.pop("metadata", None)
         return self.compose_call(fn="update_subnet",params=params,key=key)
 
-    def metadata(self) -> str:
-        netuids = self.netuids()
-        metadata = self.query_map('SubnetMetadata')
-        metadata =  {i : metadata.get(i, None) for i in netuids}
-        metadata = sorted(metadata.items(), key=lambda x: x[0])
-        return {k: v for k, v in metadata}
+    def metadata(self, subnet=2) -> str:
+        metadata = self.query_map('Metadata', [subnet])
+        return metadata
     
     def subnet2metadata(self) -> str:
         netuids = self.netuids()
@@ -1978,6 +1976,7 @@ class Chain(c.Module):
             subnet = subnet_map_lower[subnet]
         assert subnet in netuid2name, f"Subnet {subnet} not found"
         return subnet
+
     def resolve_subnet_name(self, subnet: str) -> int:
         subnet = self.resolve_subnet(subnet)
         subnet_map = self.subnet_map()
@@ -1985,7 +1984,6 @@ class Chain(c.Module):
         if subnet in netuid2name:
             subnet = netuid2name[subnet]
         reverse_subnet_map = {v:k for k,v in subnet_map.items()}
-
         assert subnet in subnet_map, f"Subnet {subnet} not found, {subnet_map}"
         return subnet
 
@@ -2094,7 +2092,7 @@ class Chain(c.Module):
         path = self.resolve_path(f'{self.network}/namespace/{subnet}')
         namespace = c.get(path,None, max_age=max_age, update=update)
         if namespace == None:
-            results =  self.query_batch_map({'ChainModule': [('Name', [subnet]), ('Address', [subnet])]})
+            results =  self.query_batch_map({'SubspaceModule': [('Name', [subnet]), ('Address', [subnet])]})
             names = results['Name']
             addresses = results['Address']
             namespace = {}
@@ -2258,7 +2256,7 @@ class Chain(c.Module):
         params = {"origin": key, "target": dest}
 
         return self.compose_call(
-            module="ChainModule",
+            module="SubspaceModule",
             fn="delegate_rootnet_control",
             params=params,
             key=key,
@@ -2317,7 +2315,7 @@ class Chain(c.Module):
             params = []
             bulk_query = self.query_batch_map(
                 {
-                    "ChainModule": [
+                    "SubspaceModule": [
                         ("ImmunityPeriod", params),
                         ("MinAllowedWeights", params),
                         ("MaxAllowedWeights", params),
@@ -2401,7 +2399,7 @@ class Chain(c.Module):
 
             query_all = self.query_batch(
                 {
-                    "ChainModule": [
+                    "SubspaceModule": [
                         ("MaxNameLength", []),
                         ("MinNameLength", []),
                         ("MaxAllowedSubnets", []),
@@ -2463,7 +2461,7 @@ class Chain(c.Module):
         return result
 
     def founders(self):
-        return self.query_map("Founder", module="ChainModule")
+        return self.query_map("Founder", module="SubspaceModule")
     
     
     def my_subnets(self, update=False):
@@ -2515,7 +2513,7 @@ class Chain(c.Module):
                 for k in keys:
                     if k in address2key:
                         my_keys += [k]
-                modules = self.get_modules(my_keys, subnet=subnet)
+                modules = self.modules(my_keys, subnet=subnet)
                 for i,m in enumerate(modules):
                     if not 'name' in m:
                         continue
@@ -2596,12 +2594,12 @@ class Chain(c.Module):
         return new_name
                 
     def modules(self,
-                    subnet=0,
+                    subnet=2,
                     max_age = tempo,
                     update=False,
                     timeout=30,
-                    module = "ChainModule", 
-                    features = ['key', 'url', 'name'],
+                    module = "SubspaceModule", 
+                    features = ['key', 'url', 'name', 'metadata'],
                     lite = True,
                     num_connections = 1,
                     search=None,
@@ -2626,28 +2624,29 @@ class Chain(c.Module):
         for future in c.as_completed(future2feature, timeout=timeout):
             feature = future2feature.pop(future)
             results[feature] = future.result()
-            
+            if feature == 'metadata':
+                print(results[feature])
             c.put(feature2path[feature], results[feature])
             progress.update(1)
-    
 
         # process
         results = self.process_results(results)
         modules = []
-        for uid in results['key'].keys():
-            module = {'key': results['key'][uid]}
+        for uid in results['key'].keys():  
+            m = {'key':  results['key'][uid]}       
             for f in features:
-                if f in ['key']:
+                if f == 'key':
                     continue
+                m[f] = None
                 if isinstance(results[f], dict):
                     if uid in results[f]:
-                        module[f] = results[f][uid]
-                    if module['key'] in results[f]:
-                        module[f] = results[f][module['key']]
+                        m[f] = results[f][uid]
+                    if m['key'] in results[f]:
+                        m[f] = results[f][m['key']]
                 elif isinstance(results[f], list):
-                    module[f] = results[f][uid]
-            module = {k:v for k,v in module.items()}
-            modules.append(module)  
+                    m[f] = results[f][uid] 
+                     
+            modules.append(m)  
         if search:
             modules = [m for m in modules if search in m['name']]
         if df:
@@ -2656,6 +2655,7 @@ class Chain(c.Module):
             modules[i] = {k:m[k] for k in features}
         return modules
 
+    mods = modules
     def format_amount(self, x, fmt='nano') :
         if type(x) in [dict]:
             for k,v in x.items():
@@ -2695,14 +2695,10 @@ class Chain(c.Module):
         key = c.get_key(key)
         keys = self.keys(subnet, max_age=max_age)
         return key.ss58_address in keys
-    
-    def get_modules(self, keys, subnet=0, max_age=60):
-        futures = [ c.submit(self.get_module, kwargs=dict(module=k, subnet=subnet, max_age=max_age)) for k in keys]
-        return c.wait(futures, timeout=30)
 
-    def get_module(self, 
+    def module(self, 
                    module, 
-                   subnet=0,
+                   subnet=2,
                    fmt='j', 
                    mode = 'https', 
                    block = None, 
@@ -2713,21 +2709,23 @@ class Chain(c.Module):
         module = requests.post(url, 
                                json={'id':1, 
                                      'jsonrpc':'2.0',  
-                                     'method': 'chain_getModuleInfo', 
+                                     'method': 'subspace_getModuleInfo', 
                                      'params': [module, subnet]}
                                ).json()
+        print(module)
         module = {**module['result']['stats'], **module['result']['params']}
         module['name'] = self.vec82str(module['name'])
-        module['url'] = self.vec82str(module['address'])
+        module['url'] = self.vec82str(module.pop('address'))
         module['dividends'] = module['dividends'] / U16_MAX
         module['incentive'] = module['incentive'] / U16_MAX
         module['stake_from'] = {k:self.format_amount(v, fmt=fmt) for k,v in module['stake_from'].items()}
         module['stake'] = sum([v / 10**9 for k,v in module['stake_from'].items() ])
         module['emission'] = self.format_amount(module['emission'], fmt=fmt)
         module['key'] = module.pop('controller', None)
-        module['metadata'] = module.pop('metadata', {})
+        module['metadata'] = self.vec82str(module.pop('metadata', []))
         module['vote_staleness'] = (block or self.block()) - module['last_update']
         return module
+    mod = module
     
     @staticmethod
     def vec82str(x):
@@ -2778,7 +2776,7 @@ class Chain(c.Module):
         return metadata
                         
     # get all of the storage names for a module
-    pallets = ["SubnetEmissionModule", "ChainModule", "GovernanceModule", "ChainModule"]
+    pallets = ["SubnetEmissionModule", "SubspaceModule", "GovernanceModule", "SubspaceModule"]
     def storage(self, 
                 search=None, 
                 pallets= pallets, 
