@@ -103,20 +103,18 @@ class Chain(c.Module):
         network = network or self.network
         if timeout != None:
             ws_options["timeout"] = timeout
+        self.network = network
         self.ws_options = ws_options
         self.url  = url or (mode + '://' + self.url_map.get(network)[0])
         self.num_connections = num_connections                  
         self.wait_for_finalization = wait_for_finalization
-        self.network = network
         self.connections_queue = queue.Queue(num_connections)
-        self.num_connections = num_connections
+        self.network_state = {"network": self.network, "url": self.url,"connections": self.num_connections}
+        c.print(self.network_state)
         for _ in range(self.num_connections):
             self.connections_queue.put(SubstrateInterface(self.url, ws_options=self.ws_options))
         self.connection_latency = c.time() - t0
-        network_state = {"network": self.network, "url": self.url,"connections": self.num_connections,"latency": self.connection_latency,
-        }
-        c.print(f'Chain(network={self.network} url={self.url} connections={self.num_connections} latency(s)={c.round(self.connection_latency, 2)})', color='blue') 
-        
+        c.print(f'Chain({self.network_state})', color='blue') 
 
     def get_url(self, mode='wss',  **kwargs):
         prefix = mode + '://'
@@ -2729,8 +2727,8 @@ class Chain(c.Module):
     
     @staticmethod
     def vec82str(x):
+        x = x or []
         return ''.join([chr(ch) for ch in x]).strip()
-
 
     def netuids(self,  update=False, block=None) -> Dict[int, str]:
         return list(self.netuid2subnet( update=update, block=block).keys())
