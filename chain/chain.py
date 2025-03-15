@@ -37,8 +37,8 @@ class Chain(c.Module):
     blocktime = block_time = 8
     blocks_per_day = 24*60*60/block_time
     url_map = {
-        "main": ["api.communeai.net"],
-        "test": ["testnet.api.communeai.net"]
+        "main": {"lite": ["api.communeai.net"], "archive": ["archive-node-0.communeai.net", "archive-node-1.communeai.net"]},
+        "test": {"lite": ["testnet.api.communeai.net"]}
     }
     network : str = 'main' # og network
     networks = list(url_map.keys())
@@ -56,6 +56,7 @@ class Chain(c.Module):
         wait_for_finalization: bool = False,
         test = False,
         ws_options = {},
+        archive = False,
         timeout: int  = None,
         net = None,
     ):
@@ -65,6 +66,7 @@ class Chain(c.Module):
                          test = test,
                          num_connections=num_connections,  
                          ws_options=ws_options,
+                         archive=archive,
                          wait_for_finalization=wait_for_finalization, 
                          timeout=timeout)
         
@@ -90,6 +92,7 @@ class Chain(c.Module):
                         mode = 'wss',
                         url = None,
                         test = False,
+                        archive = False,
                         num_connections: int = 1,
                         ws_options: dict[str, int] = {},
                         wait_for_finalization: bool = False,
@@ -105,7 +108,11 @@ class Chain(c.Module):
             ws_options["timeout"] = timeout
         self.network = network
         self.ws_options = ws_options
-        self.url  = url or (mode + '://' + self.url_map.get(network)[0])
+        self.archive = archive
+        self.mode = mode
+        if url == None:
+            url = self.get_url()
+        self.url  = url 
         self.num_connections = num_connections                  
         self.wait_for_finalization = wait_for_finalization
         self.connections_queue = queue.Queue(num_connections)
@@ -116,11 +123,14 @@ class Chain(c.Module):
         self.connection_latency = c.time() - t0
         c.print(f'Chain({self.network_state})', color='blue') 
 
-    def get_url(self, mode='wss',  **kwargs):
-        prefix = mode + '://'
-        url = c.choice(self.url_map[self.network])
-        if not url.startswith(prefix):
-            url = prefix + url
+    def get_url(self,  mode=None, **kwargs):
+        mode = mode or self.mode
+        sub_key = 'archive' if self.archive else 'lite'
+        urls = self.url_map[self.network].get(sub_key)
+        assert len(urls) > 0
+        url = c.choice(urls)
+        if not url.startswith(mode):
+            url = mode + '://' + url
         return url    
 
     @contextmanager
@@ -808,7 +818,6 @@ class Chain(c.Module):
         result = c.get(path, None, max_age=max_age, update=update)
         if result == None:
             result = self.query_batch_map({module: [(name, params)]}, block_hash)
-
             if extract_value:
                 if isinstance(result, dict):
                     result = result
@@ -1194,20 +1203,6 @@ class Chain(c.Module):
         params = {"amount":  amount*(10**9), "module_key": dest}
         return self.compose_call(fn="remove_stake", params=params, key=key)
     
-    def update_modules( self, subnet: str, timeout: int=60) -> ExtrinsicReceipt:
-        modules = self.my_modules(subnet)
-        futures = []
-        for m in modules:
-            if m['serving']:
-                continue
-            print(f'Updating {m["name"]}')
-            futures += [c.submit(self.update_module, dict(name=m['name'], subnet=subnet), timeout=timeout)]
-        progress = c.tqdm(total=len(futures))
-        results = []
-        for f in c.as_completed(futures, timeout=timeout):
-            results.append(f.result())
-            progress.update(1)
-        return results
 
     def update_module(
         self,
@@ -1218,12 +1213,16 @@ class Chain(c.Module):
         delegation_fee: int = None,
         validator_weight_fee = None,
         subnet = 2,
+        min_balance = 10,
         public = False,
 
     ) -> ExtrinsicReceipt:
         assert isinstance(key, str) or name != None
         name = name or key
         key = self.resolve_key(key)
+        balance = self.balance(key)
+        if balance < min_balance:
+            raise ValueError(f'Key {key.ss58_address} has insufficient balance {balance} < {min_balance}')
         subnet = self.resolve_subnet(subnet)
         if url == None:
             url = c.namespace().get(name, '0.0.0.0:8888')
@@ -1242,6 +1241,7 @@ class Chain(c.Module):
         return self.compose_call("update_module", params=params, key=key) 
     
 
+    updatemod = upmod = update_module
 
     def reg(self, name='compare', metadata=None, url='0.0.0.0:8888', module_key=None, key=None, subnet=2):
         return self.register(name=name, metadata=metadata, url=url, module_key=module_key, key=key, subnet=subnet)
@@ -2290,12 +2290,16 @@ class Chain(c.Module):
     def resolve_key_address(self, key:str ):
         if key == None:
             key = 'module'
-
-        if self.valid_h160_address(key) or self.valid_ss58_address(key):
-            return key
-        else:
-            key = c.get_key( key )
+        if isinstance(key, str):
+            if self.valid_h160_address(key) or self.valid_ss58_address(key):
+                return key
+            else:
+                key = c.get_key( key )
+                return key.ss58_address
+        elif hasattr(key, 'ss58_address'):
             return key.ss58_address
+        else:
+            raise ValueError(f"Invalid key {key}")
 
     def resolve_key(self, key:str ):
         if isinstance(key, str):
@@ -2622,8 +2626,6 @@ class Chain(c.Module):
         for future in c.as_completed(future2feature, timeout=timeout):
             feature = future2feature.pop(future)
             results[feature] = future.result()
-            if feature == 'metadata':
-                print(results[feature])
             c.put(feature2path[feature], results[feature])
             progress.update(1)
 
@@ -2710,7 +2712,6 @@ class Chain(c.Module):
                                      'method': 'subspace_getModuleInfo', 
                                      'params': [module, subnet]}
                                ).json()
-        print(module)
         module = {**module['result']['stats'], **module['result']['params']}
         module['name'] = self.vec82str(module['name'])
         module['url'] = self.vec82str(module.pop('address'))
@@ -2739,6 +2740,10 @@ class Chain(c.Module):
         netuid2subnet = self.netuid2subnet()
         emissions = {netuid2subnet[k].lower():v/10**9 for k,v in netuid2emission.items()}
         return  dict(sorted(emissions.items(), key=lambda x: x[1], reverse=True))
+
+    def subnet2emission(self, **kwargs ) -> Dict[str, str]:
+        return self.emissions(**kwargs)
+        
 
     def e(self):
         return self.emissions()
@@ -2795,6 +2800,11 @@ class Chain(c.Module):
     def test(cls):
         from .test import Test
         return Test().test()
+
+
+
+    def fam(self):
+        return 1
 
     
             
