@@ -1034,10 +1034,7 @@ class Chain(c.Module):
             # fee calculation parity has a bug in this version,
             # where the method has to be removed
             rpc_methods = substrate.config.get("rpc_methods")  # type: ignore
-
-            if "state_call" in rpc_methods:  # type: ignore
-                rpc_methods.remove("state_call")  # type: ignore
-
+            rpc_methods.pop("state_call", None)  # type: ignore # remove the method
             # create the multisig account
             multisig_acc = substrate.generate_multisig_account(  # type: ignore
                 signatories, threshold
