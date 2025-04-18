@@ -19,7 +19,7 @@ class Test:
     def test_module_params(self, keys=['dividends', 'incentive'], subnet=0):
         self = c.module('chain')()
         key = self.keys(subnet)[0]
-        module_info = self.get_module(key, subnet=subnet)
+        module_info = self.module(key, subnet=subnet)
         assert isinstance(module_info, dict)
         for k in keys:
             assert k in module_info, f'{k} not in {module_info}'
