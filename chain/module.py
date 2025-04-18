@@ -28,7 +28,7 @@ IPFS_REGEX = re.compile(r"^Qm[1-9A-HJ-NP-Za-km-z]{44}$")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 
-class Chain(c.Module):
+class Chain:
 
     name2storage_exceptions = {'key': 'Keys'}
     storage2name_exceptions = {v:k for k,v in name2storage_exceptions.items()}
@@ -115,7 +115,7 @@ class Chain(c.Module):
         self.connection_latency = c.time() - t0
         network_state = {"network": self.network, "url": self.url,"connections": self.num_connections,"latency": self.connection_latency,
         }
-        c.print(f'Chain(network={self.network} url={self.url} connections={self.num_connections} latency(s)={c.round(self.connection_latency, 2)})', color='blue') 
+        c.print(f'Chain(network={self.network} url={self.url} connections={self.num_connections} latency={self.connection_latency}s)', color='blue') 
         
 
     def get_url(self, mode='wss',  **kwargs):
@@ -752,7 +752,7 @@ class Chain(c.Module):
         self,
         name: str,
         params: list[Any] = [],
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
     ) -> Any:
         """
         Queries a storage function on the network.
@@ -781,7 +781,7 @@ class Chain(c.Module):
         self,
         name: str='Emission',
         params: list[Any] = [],
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         extract_value: bool = True,
         max_age=60,
         update=False,
@@ -868,7 +868,7 @@ class Chain(c.Module):
         fn: str,
         params: dict[str, Any],
         key: Keypair,
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         wait_for_inclusion: bool = True,
         wait_for_finalization: bool = True,
         sudo: bool = False,
@@ -963,7 +963,7 @@ class Chain(c.Module):
         key: Keypair,
         signatories: list[Ss58Address],
         threshold: int,
-        module: str = "ChainModule",
+        module: str = "SubspaceModule",
         wait_for_inclusion: bool = True,
         wait_for_finalization: bool = None,
         sudo: bool = False,
@@ -1084,7 +1084,30 @@ class Chain(c.Module):
         dest = self.resolve_key_address(dest)
         params = {"dest": dest, "value": self.to_nanos(amount)}
         return self.compose_call( module="Balances", fn="transfer_keep_alive", params=params, key=key)
-    send = transfer
+    def send(
+        self,
+        key: Keypair,
+        dest: Ss58Address,
+        amount: int,
+    ) -> ExtrinsicReceipt:
+        """
+        Transfers a specified amount of tokens from the signer's account to the
+        specified account.
+
+        Args:
+            key: The keypair associated with the sender's account.
+            amount: The amount to transfer, in nanotokens.
+            dest: The SS58 address of the recipient.
+
+        Returns:
+            A receipt of the transaction.
+
+        Raises:
+            InsufficientBalanceError: If the sender's account does not have
+              enough balance.
+            ChainTransactionError: If the transaction fails.
+        """
+        return self.transfer(key=key, dest=dest, amount=amount)
 
     def to_nanos(self, amount):
         return amount * 10**9
@@ -1125,7 +1148,7 @@ class Chain(c.Module):
             "amounts": amounts,
         }
 
-        return self.compose_call(module="ChainModule", fn="transfer_multiple", params=params, key=key )
+        return self.compose_call(module="SubspaceModule", fn="transfer_multiple", params=params, key=key )
     
     def get_stake(self, key=None):
         return sum(list(self.get_stake_from(key).values()))
@@ -1265,6 +1288,7 @@ class Chain(c.Module):
             subnet: The network subnet to register the module in.
                 If None, a default value is used.
         """
+
         key =  c.get_key(key)
         if url == None:
             namespace = c.namespace()
@@ -2094,7 +2118,7 @@ class Chain(c.Module):
         path = self.resolve_path(f'{self.network}/namespace/{subnet}')
         namespace = c.get(path,None, max_age=max_age, update=update)
         if namespace == None:
-            results =  self.query_batch_map({'ChainModule': [('Name', [subnet]), ('Address', [subnet])]})
+            results =  self.query_batch_map({'SubspaceModule': [('Name', [subnet]), ('Address', [subnet])]})
             names = results['Name']
             addresses = results['Address']
             namespace = {}
@@ -2258,7 +2282,7 @@ class Chain(c.Module):
         params = {"origin": key, "target": dest}
 
         return self.compose_call(
-            module="ChainModule",
+            module="SubspaceModule",
             fn="delegate_rootnet_control",
             params=params,
             key=key,
@@ -2294,12 +2318,11 @@ class Chain(c.Module):
     def resolve_key_address(self, key:str ):
         if key == None:
             key = 'module'
-
-        if self.valid_h160_address(key) or self.valid_ss58_address(key):
+        if self.valid_h160_address(key) or c.valid_ss58_address(key):
             return key
         else:
             key = c.get_key( key )
-            return key.ss58_address
+            return key.key_address
 
     def resolve_key(self, key:str ):
         if isinstance(key, str):
@@ -2317,7 +2340,7 @@ class Chain(c.Module):
             params = []
             bulk_query = self.query_batch_map(
                 {
-                    "ChainModule": [
+                    "SubspaceModule": [
                         ("ImmunityPeriod", params),
                         ("MinAllowedWeights", params),
                         ("MaxAllowedWeights", params),
@@ -2385,11 +2408,13 @@ class Chain(c.Module):
         results = {int(k):v for k,v in results.items()}
         if subnet != None: 
             subnet = self.resolve_subnet(subnet)
-            print(f"PARAMS(subnet={subnet})")
+            print(f"UpdatingSubnet({subnet})")
             results =  results[subnet]
         return results
 
     subnet_params = params 
+    def resolve_path(self, path:str) -> str:
+        return c.abspath(f'~/.commune/chain/{path}')
 
     def global_params(self, max_age=60, update=False) -> NetworkParams:
         """
@@ -2401,7 +2426,7 @@ class Chain(c.Module):
 
             query_all = self.query_batch(
                 {
-                    "ChainModule": [
+                    "SubspaceModule": [
                         ("MaxNameLength", []),
                         ("MinNameLength", []),
                         ("MaxAllowedSubnets", []),
@@ -2463,7 +2488,7 @@ class Chain(c.Module):
         return result
 
     def founders(self):
-        return self.query_map("Founder", module="ChainModule")
+        return self.query_map("Founder", module="SubspaceModule")
     
     
     def my_subnets(self, update=False):
@@ -2600,7 +2625,7 @@ class Chain(c.Module):
                     max_age = tempo,
                     update=False,
                     timeout=30,
-                    module = "ChainModule", 
+                    module = "SubspaceModule", 
                     features = ['key', 'url', 'name'],
                     lite = True,
                     num_connections = 1,
@@ -2713,12 +2738,12 @@ class Chain(c.Module):
         module = requests.post(url, 
                                json={'id':1, 
                                      'jsonrpc':'2.0',  
-                                     'method': 'chain_getModuleInfo', 
+                                     'method': 'subspace_getModuleInfo', 
                                      'params': [module, subnet]}
                                ).json()
         module = {**module['result']['stats'], **module['result']['params']}
         module['name'] = self.vec82str(module['name'])
-        module['url'] = self.vec82str(module['address'])
+        module['url'] = self.vec82str(module.pop('address'))
         module['dividends'] = module['dividends'] / U16_MAX
         module['incentive'] = module['incentive'] / U16_MAX
         module['stake_from'] = {k:self.format_amount(v, fmt=fmt) for k,v in module['stake_from'].items()}
@@ -2741,7 +2766,7 @@ class Chain(c.Module):
         params = self.params(**kwargs)
         netuid2emission =  {k:params['emission'] * self.blocks_per_day for k,params in params.items()}
         netuid2subnet = self.netuid2subnet()
-        emissions = {netuid2subnet[k].lower():v/10**9 for k,v in netuid2emission.items()}
+        emissions = {netuid2subnet[str(k)]:v/10**9 for k,v in netuid2emission.items()}
         return  dict(sorted(emissions.items(), key=lambda x: x[1], reverse=True))
 
     def e(self):
@@ -2757,8 +2782,10 @@ class Chain(c.Module):
         netuid2subnet = c.get(path, None, update=update, max_age=max_age)
         if netuid2subnet == None:
             netuid2subnet = self.query_map("SubnetNames", extract_value=False, block=block)
-            netuid2subnet = {int(k):v for k,v in netuid2subnet.items()}
             c.put(path, netuid2subnet)
+        
+        netuid2subnet = {int(k):v for k,v in netuid2subnet.items()}
+
         return netuid2subnet
     
     def miners(self, subnet=0, max_age=60, update=False):
@@ -2778,7 +2805,7 @@ class Chain(c.Module):
         return metadata
                         
     # get all of the storage names for a module
-    pallets = ["SubnetEmissionModule", "ChainModule", "GovernanceModule", "ChainModule"]
+    pallets = ["SubnetEmissionModule", "SubspaceModule", "GovernanceModule", "SubspaceModule"]
     def storage(self, 
                 search=None, 
                 pallets= pallets, 
@@ -2801,7 +2828,57 @@ class Chain(c.Module):
         return Test().test()
 
     
+
+
+
+
+    def get_tx_history(self, key=None,  start_block=None, end_block=None, limit=10):
+        """
+        Get transaction history across a range of blocks.
+        
+        Args:
+            start_block: Starting block number (default: current - limit)
+            end_block: Ending block number (default: current)
+            address: Optional address to filter transactions
+            limit: Maximum number of blocks to scan
             
-    
+        Returns:
+            List of transactions
+        """
+        address = self.resolve_key_address(key)
+        block = self.block()
+        with self.get_conn(init=True) as substrate:
+            end_block = end_block or block
+            start_block = start_block or max(1, end_block - limit)
+            
+            transactions = []
+            for block_num in range(start_block, end_block + 1):
+                block_hash = substrate.get_block_hash(block_num)
+                print(f"Processing block {block_num} with hash {block_hash}")
+                block = substrate.get_block(block_hash=block_hash)
+            
+                for extrinsic in block['extrinsics']:
+                    print(f"Processing extrinsic {extrinsic}")
+                    if hasattr(extrinsic, 'address'):
+                        
+                        if address is None or extrinsic.address == address:
+                            print(f"Found transaction for address {extrinsic}")
+                            tx_info = {
+                                'block_num': block_num,
+                                'block_hash': block_hash,
+                                'extrinsic_hash': extrinsic.extrinsic_hash,
+                                # 'module': extrinsic.call_module.name,
+                                'function': extrinsic['call']['call_function'].name,
+                                'params': extrinsic['call']['call_function'].value['fields'],
+                                # 'params': extrinsic.params,
+                                'timestamp': block.get('header', {}).get('timestamp')
+                            }
+                            transactions.append(tx_info)
+            
+            return transactions
+
+"""
+{'extrinsic_hash': '0x3b0d7cd03c28bb12cbdd770844943704c129435b94a59ca12008eef006636253', 'extrinsic_length': 371, 'call': {'call_index': '0x0c01', 'call_function': 'send_ping', 'call_module': 'Offworker', 'call_args': [{'name': 'payload', 'type': 'KeepAlivePayload<Public, BlockNumberFor>', 'value': {'public_key': ('0xc722de1ad5931c16405e34ad685132098395cbdf1c355b36fe4ae66b64c41cabf63a6f9bda8030d8226ae1bc2556fd59f4e502998a8bcf3231999ffae8573f177fdaac996f59d1ab4e9614a63be280b5bf3c5278767b9799415efdbc4482dbb3e3fcb315aa1849c7b642d1684c2ff78cad50b4d6f8aad15b54f71d23bc825d750c13e0c0fdf369c058a20275da1e146bd4382dcac06a8a1fd26d9af64b6c7c24991ce7305b4b49d6ccaf38eb6b7548b3571c7acfd63adc9af2cf338f28855bfcd991d807111f14a3dae1f19040589705f7efcdb8190c1a119d5bf8d226071c7da550d9d0db45f81c202b7450498510e1ed741dde4e79d1375cb2362cd09577cb', '\x01\x00\x01'), 'block_number': 4548242, 'public': {'Sr25519': '0xd4f2246e31f267a69004c3213b8cb5cd64add9933c46b216ecfc523a6778347c'}}}, {'name': 'signature', 'type': 'Signature', 'value': {'Sr25519': '0x446656cfc453d40c5ef9484d34e196e2e088e72d53ea8eff752d1894ddb08725b2039e742eb69dd80523b50579231353d8bcc70026819b1b8b234e4a8e72ad80'}}], 'call_hash': '0x9efc3818c1435a17d518fb829f592aec4cb2bb3dd0a7fc76396cfe758a7bbb19'}}
 
 
+"""

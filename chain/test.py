@@ -37,22 +37,6 @@ class Test:
         return {'msg': 'substrate test passed', 'success': True}
 
 
-    def test(self):
-        fns = [f for f in dir(self) if 'test_' in f]
-        fn2result = {}
-        fn2error = {}
-        for fn in fns:
-            try:
-                result = getattr(self, fn)()
-                fn2result[fn] = result
-            except Exception as e:
-                fn2error[fn] = {'success': False, 'msg': str(e)}
-        if len(fn2error) > 0:
-            raise Exception(f'Errors: {fn2error}')
-           
-        return fn2result
-
-
 
 
 
