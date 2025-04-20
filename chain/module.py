@@ -913,7 +913,8 @@ class Chain:
         """
 
         key = self.resolve_key(key)
-        
+        key.crypto_type = key.crypto_type_id
+        print(f'Keypair: {key.ss58_address} cryptoـtype={key.crypto_type}')
         c.print(f'Calling(module={module} fn={fn} network={self.network} key={key.key_address} params={params}', color='blue')
 
         if key is None and not unsigned:
@@ -934,7 +935,6 @@ class Chain:
                         "call": call.value,  # type: ignore
                     },
                 )
-
             if not unsigned:
                 extrinsic = substrate.create_signed_extrinsic(  # type: ignore
                     call=call, 
@@ -944,7 +944,6 @@ class Chain:
                 )  # type: ignore
             else:
                 extrinsic = substrate.create_unsigned_extrinsic(call=call)  # type: ignore
-
             response = substrate.submit_extrinsic(
                 extrinsic=extrinsic,
                 wait_for_inclusion=wait_for_inclusion,
@@ -1271,9 +1270,9 @@ class Chain:
 
     def register(
         self,
-        name: str,
         url: str = '0.0.0.0:8000',
         module_key : str = None , 
+        name: str = None,
         key: Keypair = None,
         metadata: str = 'NA',
         subnet: str = 2,
