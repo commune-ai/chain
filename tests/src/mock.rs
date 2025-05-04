@@ -22,7 +22,7 @@ use pallet_chain::{
 };
 use parity_scale_codec::{Decode, Encode};
 use rand::rngs::OsRng;
-use rsa::{traits::PublicKeyParts, Pkcs1v15Encrypt};
+use rsa::{traits::PublicKeyParts};
 use scale_info::{prelude::collections::BTreeSet, TypeInfo};
 
 use sp_core::{sr25519, ConstU16, ConstU64, H256};
@@ -136,7 +136,6 @@ impl pallet_chain::Config for Test {
     type DefaultMinValidatorStake = MinValidatorStake;
     type PalletId = ChainPalletId;
     type EnforceWhitelist = ConstBool<false>;
-    type DefaultUseWeightsEncryption = ConstBool<false>;
 }
 
 impl GovernanceApi<<Test as frame_system::Config>::AccountId> for Test {
@@ -150,14 +149,6 @@ impl GovernanceApi<<Test as frame_system::Config>::AccountId> for Test {
 
     fn update_delegating_voting_power(_delegator: &AccountId, _delegating: bool) -> DispatchResult {
         Ok(())
-    }
-
-    fn get_global_governance_configuration() -> GovernanceConfiguration {
-        Default::default()
-    }
-
-    fn get_subnet_governance_configuration(_subnet_id: u16) -> GovernanceConfiguration {
-        Default::default()
     }
 
     fn update_global_governance_configuration(config: GovernanceConfiguration) -> DispatchResult {
@@ -284,13 +275,11 @@ impl pallet_emission::Config for Test {
     type Decimals = Decimals;
     type HalvingInterval = HalvingInterval;
     type MaxSupply = MaxSupply;
-    type DecryptionNodeRotationInterval = ConstU64<5_000>;
     type MaxAuthorities = ConstU32<100>;
     type OffchainWorkerBanDuration = ConstU64<10_800>;
     // setting high value because of testing (this should never be reached in practice)
     type MissedPingsForInactivity = ConstU8<{ u8::MAX }>;
     type PingInterval = ConstU64<50>;
-    type EncryptionPeriodBuffer = ConstU64<100>;
     type WeightInfo = ();
 }
 
@@ -593,24 +582,6 @@ pub(crate) fn step_epoch(netuid: u16) {
 #[allow(dead_code)]
 pub fn set_weights(netuid: u16, key: AccountId, uids: Vec<u16>, values: Vec<u16>) {
     SubnetEmissionMod::set_weights(get_origin(key), netuid, uids.clone(), values.clone()).unwrap();
-}
-
-#[allow(dead_code)]
-pub fn set_weights_encrypted(
-    netuid: u16,
-    key: AccountId,
-    encrypted_weights: Vec<u8>,
-    decrypted_weights_hash: Vec<u8>,
-    set_last_updated: bool,
-) {
-    SubnetEmissionMod::do_set_weights_encrypted(
-        get_origin(key),
-        netuid,
-        encrypted_weights,
-        decrypted_weights_hash,
-        set_last_updated,
-    )
-    .unwrap();
 }
 
 #[allow(dead_code)]
@@ -921,20 +892,6 @@ pub(crate) use assert_ok;
 pub(crate) use update_params;
 
 // TEMP
-
-struct Decrypter {
-    // TODO: swap this with the node's decryption key type and store it once it starts
-    key: Option<rsa::RsaPrivateKey>,
-}
-
-impl Default for Decrypter {
-    fn default() -> Self {
-        Self {
-            key: Some(rsa::RsaPrivateKey::new(&mut OsRng, 1024).unwrap()),
-        }
-    }
-}
-
 
 
 fn read_u32(cursor: &mut Cursor<&Vec<u8>>) -> Option<u32> {

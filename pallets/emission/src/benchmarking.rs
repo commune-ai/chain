@@ -49,22 +49,8 @@ benchmarks! {
         let netuid = ChainMod::<T>::get_netuid_for_name("testnet".as_bytes()).unwrap();
         let uids = vec![0];
         let weights = vec![10];
-        pallet_chain::UseWeightsEncryption::<T>::set(netuid, false);
         MinValidatorStake::<T>::set(netuid, 0);
     }: set_weights(RawOrigin::Signed(module_key2), netuid, uids, weights)
-
-    set_weights_encrypted {
-        let module_key: T::AccountId = account("ModuleKey", 0, 2);
-        let module_key2: T::AccountId = account("ModuleKey2", 0, 3);
-
-        register_mock::<T>(module_key.clone(), module_key.clone(), "test".as_bytes().to_vec())?;
-        register_mock::<T>(module_key2.clone(), module_key2.clone(), "test1".as_bytes().to_vec())?;
-        let netuid = ChainMod::<T>::get_netuid_for_name("testnet".as_bytes()).unwrap();
-
-        let weights = vec![10u8];
-        let hash = vec![10u8];
-        MinValidatorStake::<T>::set(netuid, 0);
-    }: set_weights_encrypted(RawOrigin::Signed(module_key2), netuid, weights, hash)
 
     delegate_weight_control {
         let module_key: T::AccountId = account("ModuleKey", 0, 2);

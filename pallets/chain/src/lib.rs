@@ -127,9 +127,7 @@ pub mod pallet {
             IncentiveRatio: u16 = 50,
             ModuleBurnConfig,
             RegistrationsThisInterval,
-            MaxEncryptionPeriod: Option<u64> = Some(10_800),
             CopierMargin: I64F64 = I64F64::from_num(0),
-            UseWeightsEncryption,
             AlphaValues: (u16, u16) = (45875, 58982),
             MinValidatorStake,
             MaxAllowedUids: u16 = 420,
@@ -264,14 +262,9 @@ pub mod pallet {
     pub type RegistrationsThisInterval<T: Config> = StorageMap<_, Identity, u16, u16, ValueQuery>;
 
     #[pallet::storage]
-    pub type MaxEncryptionPeriod<T: Config> = StorageMap<_, Identity, u16, Option<u64>, ValueQuery>;
-
-    #[pallet::storage]
     pub type CopierMargin<T: Config> =
         StorageMap<_, Identity, u16, I64F64, ValueQuery, CopierMarginDefaultValue>;
 
-    #[pallet::storage]
-    pub type UseWeightsEncryption<T: Config> = StorageMap<_, Identity, u16, bool, ValueQuery>;
 
     #[pallet::storage]
     pub type AlphaValues<T: Config> =

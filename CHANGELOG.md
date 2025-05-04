@@ -32,7 +32,6 @@ Moved:
 - `set_weights` extrinsic has been moved to `SubnetEmissionModule` from `ChainModule`.
 - `delegate_rootnet_control` extrinsic has been moved to `SubnetEmissionModule` from `ChainModule`.
 - Some storages have been moved to `SubnetEmissionModule` from `ChainModule`:
-  - WeightEncryptionMap
   -
 Deleted:
 - `TrustRatio`
@@ -55,13 +54,8 @@ Subnet Emission Module:
   - Type: StorageMap<T::AccountId, u64>
   - Default: None (empty map)
 
-- `EncryptedWeights`:
-  - Description: The encrypted weights of the network.
-  - Type: StorageDoubleMap<u16, u16, Vec<u8>>
-  - Default: None (empty map)
 
 - `Authorities`:
-  - Description: Association of signing public keys with associated rsa encryption public keys.
   - Type: StorageValue<BoundedVec<(T::AccountId, PublicKey), T::MaxAuthorities>>
   - Default: Empty BoundedVec
 
@@ -80,11 +74,6 @@ Subnet Emission Module:
   - Type: StorageDoubleMap<u16, u64, ConsensusParams<T>>
   - Default: None (empty map)
 
-- `WeightEncryptionData`:
-  - Description: Stores both the encrypted weight and hash of a validator on a subnet.
-  - Type: StorageDoubleMap<u16, u16, EncryptionMechanism>
-  - Default: None (empty double map)
-
 - `DecryptionNodeBanQueue`:
   - Description: Queue of decryption nodes that will be banned next epoch.
   - Type: StorageDoubleMap<u16, T::AccountId, u64>
@@ -97,8 +86,6 @@ Chain Module:
   - Type: StorageMap<u16, (u16, u16)>
   - Default: (45875, 58982)
 
-**New Extrinsics**
-- `set_weights_encrypted` in `SubnetEmissionModule`
 
 **New Offchain Worker Extrinsics**
 These extrinsics are meant to be called by offchain workers only and should not be invoked directly:

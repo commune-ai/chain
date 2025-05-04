@@ -1,11 +1,11 @@
 use core::fmt::Debug;
 
-use crate::{Config, WeightEncryptionData};
+use crate::{Config};
 use frame_support::DebugNoBound;
 use pallet_chain::{
     math::*, AlphaValues, BalanceOf, Bonds, BondsMovingAverage, Founder, Kappa, Keys, LastUpdate,
     MaxAllowedValidators, MaxWeightAge, MinValidatorStake, Pallet as PalletChain,
-    UseWeightsEncryption, ValidatorPermits, Vec, WeightSettingDelegation,
+    ValidatorPermits, Vec, WeightSettingDelegation,
 };
 use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;

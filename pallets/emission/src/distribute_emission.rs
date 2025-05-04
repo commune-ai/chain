@@ -164,25 +164,8 @@ fn run_yuma_consensus<T: Config>(netuid: u16, emission_to_drain: u64) -> Result<
     log::info!("Running Yuma consensus for subnet {netuid}");
 
     let params = ConsensusParams::<T>::new(netuid, emission_to_drain)?;
-    let should_run_encrypted_consensus = pallet_chain::UseWeightsEncryption::<T>::get(netuid);
-    if !should_run_encrypted_consensus {
-        return run_default_consensus(netuid, params);
-    }
-    // This means, that subnet uses weight encryption. Create the parameters, only if subnet has
-    // some encrypted weights present
-    let encrypted_weights = WeightEncryptionData::<T>::iter_prefix(netuid).collect::<Vec<_>>();
-    if encrypted_weights.is_empty() {
-        return Err(NO_WEIGHTS);
-    }
+    return run_default_consensus(netuid, params);
 
-    let block = PalletChain::<T>::get_current_block_number();
-    // Computes only if there are decrypted weights present, that have been send by an offchain
-    // worker. Otherwise recycles emmission
-    // process_encrypted_consensus(netuid, params)?;
-
-    log::info!("Yuma consensus for subnet {netuid} completed successfully");
-    let block = PalletChain::<T>::get_current_block_number();
-    ConsensusParameters::<T>::insert(netuid, block, params);
 
     Ok(())
 }

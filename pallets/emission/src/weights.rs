@@ -36,7 +36,6 @@ use core::marker::PhantomData;
 /// Weight functions needed for `pallet_emission`.
 pub trait WeightInfo {
 	fn set_weights() -> Weight;
-	fn set_weights_encrypted() -> Weight;
 	fn delegate_weight_control() -> Weight;
 	fn remove_weight_control() -> Weight;
 }
@@ -44,34 +43,7 @@ pub trait WeightInfo {
 /// Weights for `pallet_emission` using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::Uids` (r:1 w:0)
-	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::StakeFrom` (r:2 w:0)
-	/// Proof: `ChainModule::StakeFrom` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MinValidatorStake` (r:1 w:0)
-	/// Proof: `ChainModule::MinValidatorStake` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::WeightSettingDelegation` (r:2 w:0)
-	/// Proof: `ChainModule::WeightSettingDelegation` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::N` (r:1 w:0)
-	/// Proof: `ChainModule::N` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MinAllowedWeights` (r:1 w:0)
-	/// Proof: `ChainModule::MinAllowedWeights` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MaxAllowedWeights` (r:1 w:0)
-	/// Proof: `ChainModule::MaxAllowedWeights` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::SubnetConsensusType` (r:6 w:0)
-	/// Proof: `SubnetEmissionModule::SubnetConsensusType` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::Keys` (r:1 w:0)
-	/// Proof: `ChainModule::Keys` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MaximumSetWeightCallsPerEpoch` (r:1 w:0)
-	/// Proof: `ChainModule::MaximumSetWeightCallsPerEpoch` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MinWeightStake` (r:1 w:0)
-	/// Proof: `ChainModule::MinWeightStake` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::LastUpdate` (r:1 w:1)
-	/// Proof: `ChainModule::LastUpdate` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::Weights` (r:0 w:1)
-	/// Proof: `SubnetEmissionModule::Weights` (`max_values`: None, `max_size`: None, mode: `Measured`)
+
 	fn set_weights() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2481`
@@ -81,41 +53,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(20_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::Uids` (r:1 w:0)
-	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::StakeFrom` (r:2 w:0)
-	/// Proof: `ChainModule::StakeFrom` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MinValidatorStake` (r:1 w:0)
-	/// Proof: `ChainModule::MinValidatorStake` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::WeightSettingDelegation` (r:2 w:0)
-	/// Proof: `ChainModule::WeightSettingDelegation` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MaximumSetWeightCallsPerEpoch` (r:1 w:0)
-	/// Proof: `ChainModule::MaximumSetWeightCallsPerEpoch` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::SubnetConsensusType` (r:1 w:0)
-	/// Proof: `SubnetEmissionModule::SubnetConsensusType` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::LastUpdate` (r:1 w:1)
-	/// Proof: `ChainModule::LastUpdate` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::WeightEncryptionData` (r:0 w:1)
-	/// Proof: `SubnetEmissionModule::WeightEncryptionData` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn set_weights_encrypted() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1742`
-		//  Estimated: `7682`
-		// Minimum execution time: 95_751_000 picoseconds.
-		Weight::from_parts(97_594_000, 7682)
-			.saturating_add(T::DbWeight::get().reads(10_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	/// Storage: `ChainModule::Uids` (r:2 w:0)
-	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::WeightSettingDelegation` (r:1 w:1)
-	/// Proof: `ChainModule::WeightSettingDelegation` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::WeightEncryptionData` (r:1 w:0)
-	/// Proof: `SubnetEmissionModule::WeightEncryptionData` (`max_values`: None, `max_size`: None, mode: `Measured`)
+
 	fn delegate_weight_control() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1200`
@@ -142,8 +80,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests.
 impl WeightInfo for () {
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `ChainModule::Uids` (r:1 w:0)
 	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `ChainModule::StakeFrom` (r:2 w:0)
@@ -179,41 +115,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(20_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::Uids` (r:1 w:0)
-	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::StakeFrom` (r:2 w:0)
-	/// Proof: `ChainModule::StakeFrom` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MinValidatorStake` (r:1 w:0)
-	/// Proof: `ChainModule::MinValidatorStake` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::WeightSettingDelegation` (r:2 w:0)
-	/// Proof: `ChainModule::WeightSettingDelegation` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::MaximumSetWeightCallsPerEpoch` (r:1 w:0)
-	/// Proof: `ChainModule::MaximumSetWeightCallsPerEpoch` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::SubnetConsensusType` (r:1 w:0)
-	/// Proof: `SubnetEmissionModule::SubnetConsensusType` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::LastUpdate` (r:1 w:1)
-	/// Proof: `ChainModule::LastUpdate` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::WeightEncryptionData` (r:0 w:1)
-	/// Proof: `SubnetEmissionModule::WeightEncryptionData` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn set_weights_encrypted() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1742`
-		//  Estimated: `7682`
-		// Minimum execution time: 95_751_000 picoseconds.
-		Weight::from_parts(97_594_000, 7682)
-			.saturating_add(RocksDbWeight::get().reads(10_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	/// Storage: `ChainModule::Uids` (r:2 w:0)
-	/// Proof: `ChainModule::Uids` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::WeightSettingDelegation` (r:1 w:1)
-	/// Proof: `ChainModule::WeightSettingDelegation` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ChainModule::UseWeightsEncryption` (r:1 w:0)
-	/// Proof: `ChainModule::UseWeightsEncryption` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `SubnetEmissionModule::WeightEncryptionData` (r:1 w:0)
-	/// Proof: `SubnetEmissionModule::WeightEncryptionData` (`max_values`: None, `max_size`: None, mode: `Measured`)
+
+
 	fn delegate_weight_control() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1200`

@@ -2,7 +2,6 @@ use frame_support::pallet_macros::pallet_section;
 
 // TODO: 2. For a doc comment specifically, you can use intra-doc links:
 // ```rust
-// /// The encryption period is too short or long, minimum is [`MIN_ENCRYPTION_PERIOD`] blocks max is [`MAX_ENCRYPTION_PERIOD`] blocks
 #[pallet_section]
 pub mod errors {
     #[pallet::error]
@@ -179,12 +178,6 @@ pub mod errors {
         InvalidMinValidatorStake,
         /// The maximum allowed validators value is invalid, minimum is 10.
         InvalidMaxAllowedValidators,
-        /// The encryption period is too short or long, minimum is 360 blocks max is 20_880 blocks
-        InvalidMaxEncryptionPeriod,
-        /// Subnet is using encrypted weight calls
-        SubnetEncrypted,
-        /// Subnet is not using encrypted weight calls
-        SubnetNotEncrypted,
         /// Uid is not present in LegitWhitelist, it needs to be whitelisted by DAO
         UidNotWhitelisted,
         /// The copier margin must be between 0 and 1

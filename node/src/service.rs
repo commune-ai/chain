@@ -31,7 +31,6 @@ pub use crate::eth::{
     FrontierBackend, FrontierPartialComponents, StorageOverride, StorageOverrideHandler,
 };
 
-mod decrypter;
 mod manual_seal;
 
 type BasicImportQueue = sc_consensus::DefaultImportQueue<Block>;

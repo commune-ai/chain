@@ -33,7 +33,6 @@ pub struct SubnetParams<T: Config> {
     pub min_validator_stake: u64,
     pub max_allowed_validators: Option<u16>,
     pub governance_config: GovernanceConfiguration,
-    // ---  Weight Encryption ---
 }
 
 pub struct DefaultSubnetParams<T: Config>(sp_std::marker::PhantomData<((), T)>);
@@ -106,7 +105,6 @@ const MAX_VALIDATOR_STAKE: u64 = 250_000_000_000_000;
 const MAX_COPIER_MARGIN: f64 = 1.0;
 const MIN_ALLOWED_VALIDATORS: u16 = 10;
 const MIN_SET_WEIGHT_CALLS: u16 = 1;
-const MAX_ENCRYPTION_DURATION: u64 = 10_800 * 2; // 2 days
 
 impl<T: Config> ValidatedSubnetParams<T> {
     pub fn new(params: SubnetParams<T>, netuid: Option<u16>) -> Result<Self, DispatchError> {

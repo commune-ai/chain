@@ -56,10 +56,6 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let key = ensure_signed(origin)?;
 
-        if pallet_chain::UseWeightsEncryption::<T>::get(netuid) {
-            return Err(Error::<T>::SubnetEncrypted.into());
-        }
-
         let Some(uid) = pallet_chain::Pallet::<T>::get_uid_for_key(netuid, &key) else {
             return Err(Error::<T>::ModuleDoesNotExist.into());
         };
@@ -123,7 +119,6 @@ impl<T: Config> Pallet<T> {
         );
 
         // This is querying on-chain data, and still used in `validate_input_with_params`, but this
-        // should be ok, as we do not support weight encryption for linear consensus yet.
         Self::check_whitelisted(netuid, uids)?;
 
         Ok(())
@@ -328,17 +323,10 @@ impl<T: Config> Pallet<T> {
 
         pallet_chain::WeightSettingDelegation::<T>::insert(netuid, key.clone(), target.clone());
 
-        if pallet_chain::UseWeightsEncryption::<T>::get(netuid) {
-            let Some(parent_weights) = WeightEncryptionData::<T>::get(netuid, target_uid) else {
-                return Ok(());
-            };
-            WeightEncryptionData::<T>::insert(netuid, uid, parent_weights);
-        } else {
-            let Some(parent_weights) = Weights::<T>::get(netuid, target_uid) else {
-                return Ok(());
-            };
-            Weights::<T>::insert(netuid, uid, parent_weights);
-        }
+        let Some(parent_weights) = Weights::<T>::get(netuid, target_uid) else {
+            return Ok(());
+        };
+        Weights::<T>::insert(netuid, uid, parent_weights);
 
         pallet_chain::Pallet::<T>::copy_last_update_for_uid(netuid, uid, target_uid);
         pallet_chain::Pallet::<T>::deposit_event(pallet_chain::Event::WeightsSet(
@@ -381,66 +369,4 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn do_set_weights_encrypted(
-        origin: T::RuntimeOrigin,
-        netuid: u16,
-        encrypted_weights: Vec<u8>,
-        decrypted_weights_hash: Vec<u8>,
-        set_last_updated: bool,
-    ) -> DispatchResult {
-        let key = ensure_signed(origin.clone())?;
-
-        if !pallet_chain::UseWeightsEncryption::<T>::get(netuid) {
-            return Err(Error::<T>::SubnetNotEncrypted.into());
-        }
-
-        let Some(uid) = pallet_chain::Pallet::<T>::get_uid_for_key(netuid, &key) else {
-            return Err(Error::<T>::ModuleDoesNotExist.into());
-        };
-
-        if pallet_chain::Pallet::<T>::get_delegated_stake(&key)
-            < pallet_chain::MinValidatorStake::<T>::get(netuid)
-        {
-            return Err(Error::<T>::NotEnoughStakeToSetWeights.into());
-        }
-
-        Self::check_weight_setting_delegation(netuid, &key)?;
-        Self::handle_rate_limiting(uid, netuid, &key)?;
-
-        WeightEncryptionData::<T>::insert(
-            netuid,
-            uid,
-            EncryptionMechanism {
-                encrypted: encrypted_weights.clone(),
-                decrypted_hashes: decrypted_weights_hash.clone(),
-            },
-        );
-
-        let current_block = pallet_chain::Pallet::<T>::get_current_block_number();
-        if set_last_updated {
-            pallet_chain::Pallet::<T>::set_last_update_for_uid(netuid, uid, current_block);
-        }
-        pallet_chain::Pallet::<T>::deposit_event(pallet_chain::Event::WeightsSet(
-            netuid, uid,
-        ));
-
-        Self::for_each_delegated(netuid, &key, |_target, uid| {
-            WeightEncryptionData::<T>::insert(
-                netuid,
-                uid,
-                EncryptionMechanism {
-                    encrypted: encrypted_weights.clone(),
-                    decrypted_hashes: decrypted_weights_hash.clone(),
-                },
-            );
-
-            let current_block = pallet_chain::Pallet::<T>::get_current_block_number();
-            pallet_chain::Pallet::<T>::set_last_update_for_uid(netuid, uid, current_block);
-            pallet_chain::Pallet::<T>::deposit_event(pallet_chain::Event::WeightsSet(
-                netuid, uid,
-            ));
-        });
-
-        Ok(())
-    }
 }

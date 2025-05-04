@@ -79,9 +79,6 @@ pub mod pallet {
         #[pallet::constant]
         type MaxSupply: Get<u64>;
 
-        #[pallet::constant]
-        type DecryptionNodeRotationInterval: Get<u64>;
-
         /// Maximum number of authorities.
         #[pallet::constant]
         type MaxAuthorities: Get<u32>;
@@ -99,11 +96,6 @@ pub mod pallet {
         #[pallet::constant]
         type PingInterval: Get<u64>;
 
-        /// The extra buffer period in blocks that runtime will wait before banning a decryption
-        /// node. So the final count is `MaxEncryptionPeriod + EncryptionPeriodBuffer`
-        #[pallet::constant]
-        type EncryptionPeriodBuffer: Get<u64>;
-
         type WeightInfo: WeightInfo;
     }
 
@@ -118,7 +110,6 @@ pub mod pallet {
     define_subnet_includes!(
         double_maps: {
             Weights,
-            WeightEncryptionData,
             ConsensusParameters
         },
         maps: {
@@ -140,17 +131,6 @@ pub mod pallet {
 
     #[pallet::storage]
     pub type Weights<T> = StorageDoubleMap<_, Identity, u16, Identity, u16, Vec<(u16, u16)>>;
-
-    #[derive(Encode, Decode, RuntimeDebug, Default, TypeInfo)]
-    pub struct EncryptionMechanism {
-        pub encrypted: Vec<u8>,
-        pub decrypted_hashes: Vec<u8>,
-    }
-
-    #[pallet::storage]
-    pub type WeightEncryptionData<T> =
-        StorageDoubleMap<_, Identity, u16, Identity, u16, EncryptionMechanism>;
-
 
     #[pallet::storage]
     pub type SubnetConsensusType<T> = StorageMap<_, Identity, u16, SubnetConsensus>;
@@ -349,25 +329,8 @@ pub mod pallet {
             Self::do_set_weights(origin, netuid, uids, weights)
         }
 
-        #[pallet::call_index(1)]
-        #[pallet::weight((<T as pallet::Config>::WeightInfo::set_weights_encrypted(), DispatchClass::Normal, Pays::No))]
-        pub fn set_weights_encrypted(
-            origin: OriginFor<T>,
-            netuid: u16,
-            encrypted_weights: Vec<u8>,
-            decrypted_weights_hash: Vec<u8>,
-        ) -> DispatchResult {
-            Self::do_set_weights_encrypted(
-                origin,
-                netuid,
-                encrypted_weights,
-                decrypted_weights_hash,
-                true,
-            )
-        }
-
         #[pallet::call_index(2)]
-        #[pallet::weight((<T as pallet::Config>::WeightInfo::set_weights_encrypted(), DispatchClass::Normal, Pays::No))]
+        #[pallet::weight((<T as pallet::Config>::WeightInfo::set_weights(), DispatchClass::Normal, Pays::No))]
         pub fn delegate_weight_control(
             origin: OriginFor<T>,
             netuid: u16,
@@ -377,7 +340,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight((<T as pallet::Config>::WeightInfo::set_weights_encrypted(), DispatchClass::Normal, Pays::No))]
+        #[pallet::weight((<T as pallet::Config>::WeightInfo::set_weights(), DispatchClass::Normal, Pays::No))]
         pub fn remove_weight_control(origin: OriginFor<T>, netuid: u16) -> DispatchResult {
             Self::do_remove_weight_control(origin, netuid)
         }

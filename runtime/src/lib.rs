@@ -456,7 +456,6 @@ impl pallet_chain::Config for Runtime {
     type WeightInfo = pallet_chain::weights::SubstrateWeight<Runtime>;
     type DefaultMinValidatorStake = ConstU64<50_000_000_000_000>;
     type EnforceWhitelist = ConstBool<true>;
-    type DefaultUseWeightsEncryption = ConstBool<true>;
 }
 
 impl pallet_governance::Config for Runtime {
@@ -479,11 +478,8 @@ impl pallet_emission::Config for Runtime {
     type Decimals = ConstU8<9>;
     type HalvingInterval = ConstU64<84_710_000>; // half way through max supply
     type MaxSupply = ConstU64<169_420_000>;
-    type DecryptionNodeRotationInterval = ConstU64<5_000>;
-    // type DecryptionNodeRotationInterval = ConstU64<5_0>;
 
     type MaxAuthorities = ConstU32<100>;
-    // Represented in number of blocks, defines how long decryption node will be banned for.
     // Ban presists even if ping are being sent.
     // 10_800 is one day, assume 8 second block time
     type OffchainWorkerBanDuration = ConstU64<10_800>;
@@ -493,7 +489,6 @@ impl pallet_emission::Config for Runtime {
     type MissedPingsForInactivity = ConstU8<5>;
     // Represented in number of blocks, defines how often node sends keep-alive ping
     type PingInterval = ConstU64<50>;
-    type EncryptionPeriodBuffer = ConstU64<100>;
     type WeightInfo = pallet_emission::weights::SubstrateWeight<Runtime>;
 }
 
